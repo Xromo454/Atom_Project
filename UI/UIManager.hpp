@@ -1,8 +1,10 @@
 #pragma once
+
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <string>
-#include "Element.hpp"
+
+#include "../Element.hpp"
 
 enum class UIAction
 {
@@ -20,30 +22,29 @@ private:
     bool isPaused;
 
     sf::Font font;
-    sf::RectangleShape uiPanel;
+    sf::RectangleShape panel;
     sf::Text titleText;
     sf::Text statsText;
 
-    std::vector<sf::RectangleShape> elemButtons;
-    std::vector<sf::Text> elemTexts;
+    std::vector<sf::RectangleShape> elementButtons;
+    std::vector<sf::Text> elementLabels;
 
-    sf::RectangleShape btnPause;
-    sf::Text txtPause;
+    sf::RectangleShape pauseButton;
+    sf::Text pauseLabel;
 
-    sf::RectangleShape btnClear;
-    sf::Text txtClear;
+    sf::RectangleShape clearButton;
+    sf::Text clearLabel;
 
 public:
     UIManager(float width, float windowHeight);
 
-    // Обработка клика, возвращает тип действия
     UIAction handleMouseClick(sf::Vector2f mousePos);
-
     void updateStats(size_t atomCount, int fps);
-    void render(sf::RenderWindow &window);
+    void render(sf::RenderWindow& window);
 
     float getPanelWidth() const { return panelWidth; }
     size_t getSelectedElementIndex() const { return selectedElementIndex; }
-    const ElementType &getSelectedElement() const { return ELEMENTS[selectedElementIndex]; }
+    const ElementType& getSelectedElement() const { return ELEMENTS[selectedElementIndex]; }
     bool getIsPaused() const { return isPaused; }
+    const sf::Font& getFont() const { return font; }
 };

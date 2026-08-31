@@ -1,39 +1,41 @@
-#include <iostream>
-#include <SFML/Graphics.hpp>
+#include <sfml/Graphics.hpp>
 #include <vector>
-#include <cmath>
+
 #include "Atom.hpp"
-#include "UIManager.hpp"
+#include "Element.hpp"
+#include "UI/UIManager.hpp"
+#include "Physics/PhysicsSystem.hpp"
+#include "Core/Bounds.hpp"
 
 int main()
 {
-    const float windowWidth = 1100;
-    const float windowHeight = 650;
-    const float UIWidth = 240.0f;
-
+    PhysicsSystem physicsSystem;
+    Bounds windowBounds = {0.0f, 1100.0f, 0.0f, 650.0f};
     sf::RenderWindow window(
-        sf::VideoMode({static_cast<unsigned int>(windowWidth), static_cast<unsigned int>(windowHeight)}),
+        sf::VideoMode({static_cast<unsigned int>(windowBounds.right),
+                       static_cast<unsigned int>(windowBounds.bottom)}),
         "Atom Simulation");
     window.setFramerateLimit(60);
 
-    UIManager uiManager(UIWidth, windowHeight);
-
+    UIManager uiManager(240.0f, static_cast<float>(window.getSize().y));
     std::vector<Atom> atoms;
-    sf::CircleShape atomShape;
     sf::Clock clock;
 
     while (window.isOpen())
     {
+        // Calculate delta time and FPS
         float dt = clock.restart().asSeconds();
-        if (dt > 0.05f)
-            dt = 0.05f;
+        if (dt <= 0.0f)
+            dt = 0.0166f;
+        int fps = static_cast<int>(1.0f / dt);
 
-        // 1. ОБРАБОТКА СОБЫТИЙ
         while (const auto event = window.pollEvent())
         {
             if (event->is<sf::Event::Closed>())
+            {
                 window.close();
-
+            }
+            // mouse click handling
             if (const auto *mouseClick = event->getIf<sf::Event::MouseButtonPressed>())
             {
                 if (mouseClick->button == sf::Mouse::Button::Left)
@@ -48,33 +50,44 @@ int main()
                     }
                     else if (mousePos.x > uiManager.getPanelWidth())
                     {
-                        const ElementType &selectedType = uiManager.getSelectedElement();
-                        Atom newAtom(mousePos);
-                        newAtom.radius = selectedType.radius;
-                        atoms.push_back(newAtom);
+                        const ElementType &selectedElement = uiManager.getSelectedElement();
+                        atoms.emplace_back(mousePos, &selectedElement);
                     }
                 }
             }
         }
 
-        // 2. ОБНОВЛЕНИЕ СТАТИСТИКИ
-        uiManager.updateStats(atoms.size(), static_cast<int>(1.0f / (dt > 0.0f ? dt : 0.0001f)));
-
-        // 3. ОТРИСОВКА (Clear -> Draw -> Display)
         window.clear(sf::Color(15, 15, 22));
 
+        // render atoms
+        Bounds simulationBounds = {uiManager.getPanelWidth(), windowBounds.right, windowBounds.top, windowBounds.bottom};
+        physicsSystem.applyInteractions(atoms);
         for (auto &atom : atoms)
         {
-            atomShape.setRadius(atom.radius);
-            atomShape.setOrigin({atom.radius, atom.radius});
-            atomShape.setPosition(atom.pos);
-            atomShape.setFillColor(uiManager.getSelectedElement().color);
-            window.draw(atomShape);
+            sf::CircleShape shape(atom.radius(), 32);
+            shape.setOrigin(sf::Vector2f(atom.radius(), atom.radius()));
+            shape.setPosition(atom.pos);
+            shape.setFillColor(atom.color());
+            window.draw(shape);
+
+            sf::Text label(uiManager.getFont(), atom.element->symbol, 14);
+            label.setFillColor(sf::Color::Black);
+
+            sf::FloatRect textBounds = label.getLocalBounds();
+            label.setOrigin({textBounds.position.x + textBounds.size.x / 2.0f,
+                             textBounds.position.y + textBounds.size.y / 2.0f});
+
+            label.setPosition(atom.pos);
+            window.draw(label);
+
+            atom.applyForce(sf::Vector2f(0.0f, 98.1f * atom.mass()));
+            atom.update(dt, simulationBounds);
+            atom.resetForce();
         }
 
+        uiManager.updateStats(atoms.size(), fps);
         uiManager.render(window);
         window.display();
     }
-
     return 0;
 }
