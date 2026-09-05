@@ -1,32 +1,49 @@
 #include <cmath>
+#include <algorithm>
 #include <SFML/System/Vector2.hpp>
 
 #include "PhysicsSystem.hpp"
-#include "../Atom.hpp"
+#include "Core/Entities/Atom.hpp"
 
-sf::Vector2f PhysicsSystem::computePairForce(const Atom& a, const Atom& b)
+sf::Vector2f PhysicsSystem::computePairForce(const Atom &a, const Atom &b)
 {
-    sf::Vector2f delta = b.pos - a.pos;
-
-    float dx = delta.x;
-    float dy = delta.y;
-    float r2 = dx * dx + dy * dy;
-
-    if (r2 < 0.0001f) // Avoid division by zero
+    if (!a.element || !b.element)
         return sf::Vector2f(0.0f, 0.0f);
-    
-    float dist = std::sqrt(r2);
+
+    sf::Vector2f delta = b.pos - a.pos;
+    float dist2 = delta.x * delta.x + delta.y * delta.y;
+
+    // Минимальный порог расстояния
+    const float minDistance = 2.0f;
+    if (dist2 < minDistance * minDistance)
+    {
+        dist2 = minDistance * minDistance;
+    }
+
+    float dist = std::sqrt(dist2);
     sf::Vector2f direction = delta / dist;
 
-    float desiredDistance = (a.radius() + b.radius()) * 1.5f;
-    
-    const float strength = 200.0f;
-    float forceMagnitude = strength * (dist - desiredDistance);
+    // Комбинируем физические параметры
+    float eps = std::sqrt(a.element->epsilon * b.element->epsilon);
+    float sig = (a.element->sigma + b.element->sigma) * 0.5f * 1.5f;
 
-    return direction * forceMagnitude;
+    // Вычисляем (sigma / r)
+    float sigOverR = sig / dist;
+    float sigOverR2 = sigOverR * sigOverR;
+    float sigOverR6 = sigOverR2 * sigOverR2 * sigOverR2;
+    float sigOverR12 = sigOverR6 * sigOverR6;
+
+    // Сила Леннарда-Джонса
+    float forceMagnitude = (24.0f * eps / dist) * (2.0f * sigOverR12 - sigOverR6);
+
+    // Force Clamping
+    const float maxForce = 150000.0f;
+    forceMagnitude = std::clamp(forceMagnitude, -maxForce, maxForce);
+
+    return direction * (-forceMagnitude);
 }
 
-void PhysicsSystem::applyInteractions(std::vector<Atom>& atoms)
+void PhysicsSystem::applyInteractions(std::vector<Atom> &atoms)
 {
     for (size_t i = 0; i < atoms.size(); ++i)
     {

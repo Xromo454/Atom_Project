@@ -2,7 +2,7 @@
 #include <vector>
 #include <SFML/System/Vector2.hpp>
 
-#include "../Atom.hpp"
+#include "Core/Entities/Atom.hpp"
 
 class PhysicsSystem
 {

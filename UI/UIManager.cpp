@@ -1,23 +1,31 @@
 #include "UIManager.hpp"
-
 #include <iostream>
 #include <string>
+
+namespace
+{
+    sf::Font loadFont(const std::string &path)
+    {
+        sf::Font font;
+        if (!font.openFromFile(path))
+        {
+            std::cerr << "Warning: font not loaded from " << path << "!\n";
+        }
+        return font;
+    }
+}
 
 UIManager::UIManager(float width, float windowHeight)
     : panelWidth(width),
       selectedElementIndex(0),
       isPaused(false),
-      font(),
+      font(loadFont("UI/arialmt.ttf")),
       panel(sf::Vector2f(panelWidth, windowHeight)),
       titleText(font, "Select Element:", 18),
       statsText(font, "", 14),
       pauseLabel(font, "Pause", 16),
       clearLabel(font, "Clear All", 16)
 {
-    if (!font.openFromFile("UI/arialmt.ttf"))
-    {
-        std::cerr << "Warning: font not loaded!\n";
-    }
 
     panel.setFillColor(sf::Color(25, 28, 36));
 
@@ -94,7 +102,7 @@ void UIManager::updateStats(size_t atomCount, int fps)
     statsText.setString("Atoms: " + std::to_string(atomCount) + " | FPS: " + std::to_string(fps));
 }
 
-void UIManager::render(sf::RenderWindow& window)
+void UIManager::render(sf::RenderWindow &window)
 {
     window.draw(panel);
     window.draw(titleText);
