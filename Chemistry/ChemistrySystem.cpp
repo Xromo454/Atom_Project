@@ -4,14 +4,16 @@
 #include <cmath>
 #include <SFML/System/Vector2.hpp>
 
-constexpr float chemicalScale = 0.55f; // changeable
+constexpr float chemicalScale = 0.55f;
+constexpr float bondSpringStiffness = 50.0f;
+
 float ChemistrySystem::calculateFormationDistance(const Atom &first, const Atom &second) const
 {
     if (!first.element || !second.element)
         return 0.0f;
 
     float bondDistance = (first.element->covalentRadius + second.element->covalentRadius) * chemicalScale;
-    float formationDistance = bondDistance * 1.2f; // number 1.2 is changeable
+    float formationDistance = bondDistance * 1.2f;
     return formationDistance;
 }
 float ChemistrySystem::calculateBreakDistance(const Atom &first, const Atom &second) const
@@ -20,7 +22,7 @@ float ChemistrySystem::calculateBreakDistance(const Atom &first, const Atom &sec
         return 0.0f;
 
     float bondDistance = (first.element->covalentRadius + second.element->covalentRadius) * chemicalScale;
-    float breakDistance = bondDistance * 1.5f; // number 1.5 is changeable
+    float breakDistance = bondDistance * 1.5f;
     return breakDistance;
 }
 
@@ -77,25 +79,14 @@ bool ChemistrySystem::removeBond(Atom &first, Atom &second)
     return true;
 }
 
-void ChemistrySystem::detectBonds(std::vector<Atom> &atoms)
+void ChemistrySystem::detectBonds(Simulation &simulation)
 {
+    std::vector<Atom> &atoms = simulation.getAtoms();
+
     for (std::size_t i = 0; i < atoms.size(); ++i)
     {
         for (std::size_t j = i + 1; j < atoms.size(); ++j)
         {
-            float formationDistance = calculateFormationDistance(atoms[i], atoms[j]);
-            sf::Vector2f delta = atoms[j].pos - atoms[i].pos;
-            float distance = std::sqrt(delta.x * delta.x + delta.y * delta.y);
-
-            if (distance <= formationDistance * 2.0f)
-            {
-                std::cout << "Bond check: atom " << atoms[i].id
-                          << "-" << atoms[j].id
-                          << ", distance = " << distance
-                          << ", formation distance = " << formationDistance
-                          << '\n';
-            }
-
             if (canCreateBond(atoms[i], atoms[j]))
             {
                 createBond(atoms[i], atoms[j]);
@@ -104,34 +95,79 @@ void ChemistrySystem::detectBonds(std::vector<Atom> &atoms)
     }
 }
 
-void ChemistrySystem::removeBrokenBonds(std::vector<Atom> &atoms)
+void ChemistrySystem::removeBrokenBonds(Simulation &simulation)
 {
-    for (std::size_t i = 0; i < atoms.size(); ++i)
+    std::vector<Atom> &atoms = simulation.getAtoms();
+
+    for (std::size_t i = atoms.size(); i > 0; --i)
     {
-        Atom &currentAtom = atoms[i];
-        for (std::size_t j = 0; j < currentAtom.bonds.size(); ++j)
+        Atom &currentAtom = atoms[i - 1];
+        for (std::size_t j = currentAtom.bonds.size(); j > 0; --j)
         {
-            AtomStableId neighborId = currentAtom.bonds[j].neighborId;
-            auto neighborIt = std::find_if(atoms.begin(), atoms.end(), [neighborId](const Atom &atom)
-                                           { return atom.id == neighborId; });
-            if (neighborIt != atoms.end())
+            AtomStableId neighborId = currentAtom.bonds[j - 1].neighborId;
+            Atom *neighborAtom = simulation.findAtomById(neighborId);
+
+            if (neighborAtom != nullptr)
             {
-                Atom &neighborAtom = *neighborIt;
-                float breakDistance = calculateBreakDistance(currentAtom, neighborAtom);
-                sf::Vector2f delta = neighborAtom.pos - currentAtom.pos;
+                float breakDistance = calculateBreakDistance(currentAtom, *neighborAtom);
+                sf::Vector2f delta = neighborAtom->pos - currentAtom.pos;
                 float distanceSquared = delta.x * delta.x + delta.y * delta.y;
 
                 if (distanceSquared > breakDistance * breakDistance)
                 {
-                    removeBond(currentAtom, neighborAtom);
+                    std::cout << "Bond broken: atom "
+                              << currentAtom.id << " ("
+                              << currentAtom.element->symbol << ") <-> atom "
+                              << neighborAtom->id << " ("
+                              << neighborAtom->element->symbol << ")\n";
+                    removeBond(currentAtom, *neighborAtom);
                 }
             }
         }
     }
 }
 
-void ChemistrySystem::updateBonds(std::vector<Atom> &atoms)
+void ChemistrySystem::updateBonds(Simulation &simulation)
 {
-    removeBrokenBonds(atoms);
-    detectBonds(atoms);
+    removeBrokenBonds(simulation);
+    detectBonds(simulation);
+}
+
+void ChemistrySystem::applyBondForces(Simulation &simulation)
+{
+    std::vector<Atom> &atoms = simulation.getAtoms();
+
+    for (Atom &atom : atoms)
+    {
+        for (const Bond &bond : atom.bonds)
+        {
+            if (atom.id >= bond.neighborId)
+                continue;
+
+            AtomStableId neighborId = bond.neighborId;
+
+            Atom *neighbor = simulation.findAtomById(neighborId);
+
+            if (neighbor == nullptr)
+                continue;
+
+            sf::Vector2f delta = neighbor->pos - atom.pos;
+            float distanceSquared = delta.x * delta.x + delta.y * delta.y;
+
+            if (distanceSquared < 0.0001f)
+                continue;
+
+            float distance = std::sqrt(distanceSquared);
+            sf::Vector2f direction = delta / distance;
+            float equilibriumDistance =
+                (atom.element->covalentRadius + neighbor->element->covalentRadius) * chemicalScale;
+
+            float forceMagnitude =
+                bondSpringStiffness * (distance - equilibriumDistance);
+            sf::Vector2f force = direction * forceMagnitude;
+
+            atom.applyForce(force);
+            neighbor->applyForce(-force);
+        }
+    }
 }

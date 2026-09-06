@@ -1,5 +1,6 @@
 #pragma once
-#include "Core/Entities/Atom.hpp"
+
+#include "Core/Simulation.hpp"
 
 class ChemistrySystem
 {
@@ -9,7 +10,8 @@ public:
     bool canCreateBond(const Atom &first, const Atom &second) const;
     bool createBond(Atom &first, Atom &second);
     bool removeBond(Atom &first, Atom &second);
-    void detectBonds(std::vector<Atom> &atoms);
-    void removeBrokenBonds(std::vector<Atom> &atoms);
-    void updateBonds(std::vector<Atom> &atoms);
+    void detectBonds(Simulation &simulation);
+    void removeBrokenBonds(Simulation &simulation);
+    void updateBonds(Simulation &simulation);
+    void applyBondForces(Simulation &simulation);
 };

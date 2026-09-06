@@ -2,16 +2,16 @@
 #include "Core/Bounds.hpp"
 #include <algorithm>
 #include <cmath>
-Atom::Atom(sf::Vector2f position, const ElementType *elementType)
+Atom::Atom(sf::Vector2f position, const ElementType *elementType, AtomStableId identifier)
     : pos(position),
       vel(0.0f, 0.0f),
       force(0.0f, 0.0f),
       element(elementType),
+      id(identifier),
       maxBonds(elementType ? elementType->valence : 0)
 
 {
 }
-// Physics-related methods
 void Atom::resetForce()
 {
     force = sf::Vector2f(0.0f, 0.0f);
@@ -73,7 +73,6 @@ sf::Color Atom::color() const
 {
     return element ? element->color : sf::Color::White;
 }
-// Chemistry-related methods
 int Atom::valence() const
 {
     return element ? element->valence : 0;
@@ -120,6 +119,3 @@ bool Atom::removeBondWith(const AtomStableId targetId)
     }
     return false;
 }
-
-
-//[a1, a2, a3, a4]

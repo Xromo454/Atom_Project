@@ -13,7 +13,6 @@ sf::Vector2f PhysicsSystem::computePairForce(const Atom &a, const Atom &b)
     sf::Vector2f delta = b.pos - a.pos;
     float dist2 = delta.x * delta.x + delta.y * delta.y;
 
-    // Минимальный порог расстояния
     const float minDistance = 2.0f;
     if (dist2 < minDistance * minDistance)
     {
@@ -23,20 +22,16 @@ sf::Vector2f PhysicsSystem::computePairForce(const Atom &a, const Atom &b)
     float dist = std::sqrt(dist2);
     sf::Vector2f direction = delta / dist;
 
-    // Комбинируем физические параметры
     float eps = std::sqrt(a.element->epsilon * b.element->epsilon);
     float sig = (a.element->sigma + b.element->sigma) * 0.5f * 1.5f;
 
-    // Вычисляем (sigma / r)
     float sigOverR = sig / dist;
     float sigOverR2 = sigOverR * sigOverR;
     float sigOverR6 = sigOverR2 * sigOverR2 * sigOverR2;
     float sigOverR12 = sigOverR6 * sigOverR6;
 
-    // Сила Леннарда-Джонса
     float forceMagnitude = (24.0f * eps / dist) * (2.0f * sigOverR12 - sigOverR6);
 
-    // Force Clamping
     const float maxForce = 150000.0f;
     forceMagnitude = std::clamp(forceMagnitude, -maxForce, maxForce);
 
