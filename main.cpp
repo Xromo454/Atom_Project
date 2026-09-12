@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <vector>
 #include <iostream>
+#include <cmath>
 
 #include "Core/Entities/Atom.hpp"
 #include "Core/Entities/Element.hpp"
@@ -94,11 +95,55 @@ int main()
                 if (neighbor == nullptr)
                     continue;
 
-                sf::Vertex bondLine[] = {
-                    {atom.pos, sf::Color::White},
-                    {neighbor->pos, sf::Color::White}};
+                sf::Vector2f dir = neighbor->pos - atom.pos;
+                float length = std::hypot(dir.x, dir.y);
+                if (length < 0.001f)
+                    continue;
+                sf::Vector2f unitDir = dir / length;
 
-                window.draw(bondLine, 2, sf::PrimitiveType::Lines);
+                sf::Vector2f normal(-unitDir.y, unitDir.x);
+
+                float spacing = 4.0f;
+
+                if (bond.order == 1)
+                {
+                    sf::Vertex line[] = 
+                        {{atom.pos, sf::Color::White},
+                        {neighbor->pos, sf::Color::White}};
+                    window.draw(line, 2, sf::PrimitiveType::Lines);
+                }
+                else if (bond.order == 2)
+                {
+                    sf::Vector2f offset = normal * spacing;
+
+                    sf::Vertex line1[] = 
+                        {{atom.pos + offset, sf::Color::White},
+                        {neighbor->pos + offset, sf::Color::White}};
+                    sf::Vertex line2[] = 
+                        {{atom.pos - offset, sf::Color::White},
+                        {neighbor->pos - offset, sf::Color::White}};
+
+                    window.draw(line1, 2, sf::PrimitiveType::Lines);
+                    window.draw(line2, 2, sf::PrimitiveType::Lines);
+                }
+                else if (bond.order == 3)
+                {
+                    sf::Vector2f offset = normal * (spacing * 1.4f);
+
+                    sf::Vertex line1[] = 
+                        {{atom.pos + offset, sf::Color::White},
+                        {neighbor->pos + offset, sf::Color::White}};
+                    sf::Vertex line2[] = 
+                        {{atom.pos, sf::Color::White},
+                        {neighbor->pos, sf::Color::White}};
+                    sf::Vertex line3[] = 
+                        {{atom.pos - offset, sf::Color::White},
+                        {neighbor->pos - offset, sf::Color::White}};
+
+                    window.draw(line1, 2, sf::PrimitiveType::Lines);
+                    window.draw(line2, 2, sf::PrimitiveType::Lines);
+                    window.draw(line3, 2, sf::PrimitiveType::Lines);
+                }
             }
         }
 

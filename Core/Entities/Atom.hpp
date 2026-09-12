@@ -27,16 +27,22 @@ struct Atom
     size_t maxBonds;
 
     Atom(sf::Vector2f position, const ElementType *elementType, AtomStableId identifier);
+    //Physics and movement
     void resetForce();
     void applyForce(sf::Vector2f f);
     void update(float dt, const Bounds &simulationBounds);
-
+    //Getters
     float radius() const;
     float mass() const;
     sf::Color color() const;
-
     int valence() const;
-    bool canBond() const;
+    //Chemistry and bonding
+    int usedValence() const;
+    bool canBond(int order = 1) const;
+    const Bond* getBondWith(const AtomStableId targetId) const;
+    Bond* getBondWith(const AtomStableId targetId);
+    bool upgradeBondWith(const AtomStableId targetId);
+    bool downgradeBondWith(const AtomStableId targetId);
     bool hasBondWith(const AtomStableId targetId) const;
     bool addBond(const AtomStableId targetId, int order = 1);
     bool removeBondWith(const AtomStableId targetId);
