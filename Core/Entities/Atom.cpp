@@ -12,6 +12,7 @@ Atom::Atom(sf::Vector2f position, const ElementType *elementType, AtomStableId i
 
 {
 }
+// Physics and movement
 void Atom::resetForce()
 {
     force = sf::Vector2f(0.0f, 0.0f);
@@ -61,6 +62,7 @@ void Atom::update(float dt, const Bounds &bounds)
     }
 }
 
+// Getters
 float Atom::radius() const
 {
     return element ? element->radius : 0.0f;
@@ -77,23 +79,66 @@ int Atom::valence() const
 {
     return element ? element->valence : 0;
 }
-bool Atom::canBond() const
+
+// Chemistry and bonding
+
+int Atom::usedValence() const
 {
-    return element && bonds.size() < maxBonds;
+    int result = 0;
+
+    for (const Bond &bond : bonds)
+    {
+        result += bond.order;
+    }
+    return result;
+}
+bool Atom::canBond(int order) const
+{
+    return element && usedValence() + order <= element->valence;
+}
+const Bond* Atom::getBondWith(const AtomStableId targetId) const //read only(только чтение)
+{
+    for (const auto &bond : bonds)
+    {
+        if (bond.neighborId == targetId)
+            return &bond;
+    }
+    return nullptr;
+}
+Bond* Atom::getBondWith(const AtomStableId targetId) //read/write(чтение и запись)
+{
+    return const_cast<Bond*>(std::as_const(*this).getBondWith(targetId));
+}
+bool Atom::upgradeBondWith(const AtomStableId targetId)
+{
+    Bond* bond = getBondWith(targetId);
+    if (bond && canBond(1))
+    {
+        bond->order++;
+        return true;
+    }
+    return false;
+}
+bool Atom::downgradeBondWith(const AtomStableId targetId)
+{
+    Bond* bond = getBondWith(targetId);
+    if (bond && bond->order > 1)
+    {
+        bond->order--;
+        return true;
+    }
+    else
+    {
+        return removeBondWith(targetId);
+    };
 }
 bool Atom::hasBondWith(const AtomStableId targetId) const
 {
-    return std::any_of(
-        bonds.begin(),
-        bonds.end(),
-        [targetId](const Bond &bond)
-        {
-            return bond.neighborId == targetId;
-        });
+    return getBondWith(targetId) != nullptr;
 }
 bool Atom::addBond(const AtomStableId targetId, int order)
 {
-    if (!canBond())
+    if (!canBond(order))
         return false;
 
     if (hasBondWith(targetId))

@@ -23,7 +23,7 @@ sf::Vector2f PhysicsSystem::computePairForce(const Atom &a, const Atom &b)
     sf::Vector2f direction = delta / dist;
 
     float eps = std::sqrt(a.element->epsilon * b.element->epsilon);
-    float sig = (a.element->sigma + b.element->sigma) * 0.5f * 1.5f;
+    float sig = (a.element->sigma + b.element->sigma) * 0.5f;
 
     float sigOverR = sig / dist;
     float sigOverR2 = sigOverR * sigOverR;
@@ -44,9 +44,15 @@ void PhysicsSystem::applyInteractions(std::vector<Atom> &atoms)
     {
         for (size_t j = i + 1; j < atoms.size(); ++j)
         {
-            sf::Vector2f force = computePairForce(atoms[i], atoms[j]);
-            atoms[i].applyForce(force);
-            atoms[j].applyForce(-force);
+            if(atoms[i].hasBondWith(atoms[j].id))
+            {
+                continue;
+            }
+            else{
+                sf::Vector2f force = computePairForce(atoms[i], atoms[j]);
+                atoms[i].applyForce(force);
+                atoms[j].applyForce(-force);
+            }
         }
     }
 }
